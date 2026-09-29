@@ -169,6 +169,79 @@ export const api = {
     return { data: { success: true } }
   },
 
+  // 7. Cập nhật thông tin quán (Edit/Update)
+  async updateCustomer(id, formData) {
+    const payload = {}
+    if (formData.shopName !== undefined) payload.shop_name = formData.shopName.trim()
+    if (formData.ownerName !== undefined) payload.owner_name = formData.ownerName?.trim() || 'Chủ tiệm'
+    if (formData.phone !== undefined) payload.phone = formData.phone?.trim() || ''
+    if (formData.address !== undefined) payload.address = formData.address?.trim() || ''
+    if (formData.businessModel !== undefined) payload.business_model = formData.businessModel
+    if (formData.currentPlan !== undefined) payload.current_plan = formData.currentPlan
+    if (formData.status !== undefined) payload.status = formData.status
+    if (formData.notes !== undefined) payload.notes = formData.notes || ''
+    if (formData.hardwareId !== undefined) payload.hardware_id = formData.hardwareId?.trim() || null
+    if (formData.expiresAt) {
+      payload.expires_at = new Date(formData.expiresAt).toISOString()
+    }
+
+    const { data, error } = await supabase
+      .from('customers')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return {
+      data: {
+        id: data.id,
+        shopCode: data.shop_code,
+        shopName: data.shop_name,
+        ownerName: data.owner_name,
+        phone: data.phone,
+        address: data.address,
+        businessModel: data.business_model,
+        currentPlan: data.current_plan,
+        activatedAt: data.activated_at,
+        expiresAt: data.expires_at,
+        status: data.status,
+        hardwareId: data.hardware_id,
+        activeLicenseKey: data.active_license_key,
+        notes: data.notes,
+        lastPingAt: data.last_ping_at,
+        createdAt: data.created_at
+      }
+    }
+  },
+
+  // 8. Lấy chi tiết 1 quán khách hàng
+  async getCustomer(id) {
+    const { data, error } = await supabase.from('customers').select('*').eq('id', id).single()
+    if (error) throw error
+    return {
+      data: {
+        id: data.id,
+        shopCode: data.shop_code,
+        shopName: data.shop_name,
+        ownerName: data.owner_name,
+        phone: data.phone,
+        address: data.address,
+        businessModel: data.business_model,
+        currentPlan: data.current_plan,
+        activatedAt: data.activated_at,
+        expiresAt: data.expires_at,
+        status: data.status,
+        hardwareId: data.hardware_id,
+        activeLicenseKey: data.active_license_key,
+        notes: data.notes,
+        lastPingAt: data.last_ping_at,
+        createdAt: data.created_at
+      }
+    }
+  },
+
   // 7. Đăng ký Realtime Changes
   subscribeCustomers(onChange) {
     return supabase

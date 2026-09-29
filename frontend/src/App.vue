@@ -288,6 +288,15 @@
                       <Key class="w-3.5 h-3.5" />
                     </button>
 
+                    <!-- Nút Chỉnh Sửa Thông Tin Quán -->
+                    <button
+                      @click="openEditModal(c)"
+                      title="Chỉnh sửa thông tin quán"
+                      class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
+                    >
+                      <Edit3 class="w-3.5 h-3.5" />
+                    </button>
+
                     <!-- Nút Khóa / Mở Khóa Tức Thì -->
                     <button
                       @click="toggleCustomerLock(c)"
@@ -541,11 +550,181 @@
       </div>
     </div>
 
+    <!-- Modal 3: Chỉnh Sửa Thông Tin Quán (Update / Edit Customer) -->
+    <div
+      v-if="showEditCustomerModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in"
+    >
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-slate-200 animate-scale-up max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <Edit3 class="w-4 h-4" />
+            </div>
+            <div>
+              <h3 class="font-extrabold text-white text-sm">Chỉnh Sửa Thông Tin Quán</h3>
+              <p class="text-[10px] text-slate-400">Mã Quán: <b class="text-indigo-400 font-mono">{{ editCustomerForm.shopCode }}</b></p>
+            </div>
+          </div>
+          <button @click="showEditCustomerModal = false" class="text-slate-500 hover:text-white p-1">✕</button>
+        </div>
+
+        <form @submit.prevent="submitEditCustomer" class="space-y-3.5 text-xs">
+          <!-- Tên quán -->
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Tên Tiệm / Quán <span class="text-rose-500">*</span></label>
+            <input
+              v-model="editCustomerForm.shopName"
+              type="text"
+              required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <!-- Chủ tiệm & SĐT -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">Chủ Tiệm</label>
+              <input
+                v-model="editCustomerForm.ownerName"
+                type="text"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">Số Điện Thoại</label>
+              <input
+                v-model="editCustomerForm.phone"
+                type="text"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          <!-- Địa chỉ -->
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Địa Chỉ Quán</label>
+            <input
+              v-model="editCustomerForm.address"
+              type="text"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <!-- Mô hình kinh doanh & Gói cước -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">Mô Hình</label>
+              <select
+                v-model="editCustomerForm.businessModel"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="Barber">Barber / Tiệm Cắt Tóc</option>
+                <option value="Salon">Salon Tóc Nữ</option>
+                <option value="Spa">Spa / Thẩm Mỹ / Nail</option>
+                <option value="Retail">Cửa Hàng Bán Lẻ</option>
+                <option value="Cafe">Quán Cafe / Trà Sữa</option>
+                <option value="Other">Mô Hình Khác</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">Gói Cước</label>
+              <select
+                v-model="editCustomerForm.currentPlan"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="Trial">Dùng Thử (Trial)</option>
+                <option value="Monthly">Gói Tháng (Monthly)</option>
+                <option value="Yearly">Gói Năm (Yearly)</option>
+                <option value="Lifetime">Trọn Đời (Lifetime)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Trạng thái & Ngày hết hạn -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">Trạng Thái Bản Quyền</label>
+              <select
+                v-model="editCustomerForm.status"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-bold"
+                :class="editCustomerForm.status === 'Active' ? 'text-emerald-400' : (editCustomerForm.status === 'Suspended' ? 'text-rose-400' : 'text-amber-400')"
+              >
+                <option value="Active">Đang Hoạt Động (Active)</option>
+                <option value="Suspended">Đang Khóa (Suspended)</option>
+                <option value="Expired">Hết Hạn (Expired)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">Hạn Sử Dụng</label>
+              <input
+                v-model="editCustomerForm.expiresAt"
+                type="date"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+              />
+            </div>
+          </div>
+
+          <!-- Hardware ID -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-slate-400 font-medium">Mã Thiết Bị (Hardware ID)</label>
+              <button
+                type="button"
+                v-if="editCustomerForm.hardwareId"
+                @click="editCustomerForm.hardwareId = ''"
+                class="text-[10px] text-amber-400 hover:underline cursor-pointer"
+              >
+                Xóa ID để gán máy khác
+              </button>
+            </div>
+            <input
+              v-model="editCustomerForm.hardwareId"
+              type="text"
+              placeholder="VD: HW-F23B-A6BA-9D57 (để trống nếu chưa gắn máy)"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono text-[11px]"
+            />
+          </div>
+
+          <!-- Ghi chú -->
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Ghi Chú Quản Trị</label>
+            <textarea
+              v-model="editCustomerForm.notes"
+              rows="2"
+              placeholder="Ghi chú về khách hàng, thỏa thuận thanh toán..."
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+            ></textarea>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+            <button
+              type="button"
+              @click="showEditCustomerModal = false"
+              class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              :disabled="saving"
+              class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-md shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <span>{{ saving ? 'Đang lưu...' : 'Lưu Thay Đổi' }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import api from './api'
 import {
   Store,
@@ -560,7 +739,8 @@ import {
   Unlock,
   Trash2,
   Copy,
-  Zap
+  Zap,
+  Edit3
 } from 'lucide-vue-next'
 
 const stats = ref({
@@ -587,8 +767,24 @@ const filters = ref({
 
 const showLicenseModal = ref(false)
 const showNewCustomerModal = ref(false)
+const showEditCustomerModal = ref(false)
 const selectedCustomer = ref(null)
 const generatedKey = ref('')
+
+const editCustomerForm = ref({
+  id: null,
+  shopCode: '',
+  shopName: '',
+  ownerName: '',
+  phone: '',
+  address: '',
+  businessModel: 'Barber',
+  currentPlan: 'Monthly',
+  status: 'Active',
+  expiresAt: '',
+  hardwareId: '',
+  notes: ''
+})
 
 const packages = [
   { label: '1 Tháng', months: 1, plan: 'Monthly', price: 150000 },
@@ -849,6 +1045,56 @@ async function submitCreateCustomer() {
   }
 }
 
+function openEditModal(c) {
+  let expDate = ''
+  if (c.expiresAt) {
+    try {
+      expDate = new Date(c.expiresAt).toISOString().split('T')[0]
+    } catch {
+      expDate = ''
+    }
+  }
+
+  editCustomerForm.value = {
+    id: c.id,
+    shopCode: c.shopCode || '',
+    shopName: c.shopName || '',
+    ownerName: c.ownerName || '',
+    phone: c.phone || '',
+    address: c.address || '',
+    businessModel: c.businessModel || 'Barber',
+    currentPlan: c.currentPlan || 'Monthly',
+    status: c.status || 'Active',
+    expiresAt: expDate,
+    hardwareId: c.hardwareId || '',
+    notes: c.notes || ''
+  }
+  showEditCustomerModal.value = true
+}
+
+async function submitEditCustomer() {
+  if (!editCustomerForm.value.shopName?.trim()) {
+    alert('Vui lòng nhập tên quán.')
+    return
+  }
+
+  saving.value = true
+  try {
+    const res = await api.updateCustomer(editCustomerForm.value.id, editCustomerForm.value)
+    if (res?.data) {
+      showEditCustomerModal.value = false
+      await loadData()
+      alert(`Đã cập nhật thông tin quán "${res.data.shopName}" thành công!`)
+    }
+  } catch (err) {
+    alert('Lỗi cập nhật quán: ' + (err.response?.data?.message || err.message))
+  } finally {
+    saving.value = false
+  }
+}
+
+let refreshTimer = null
+
 onMounted(() => {
   loadData()
   try {
@@ -858,6 +1104,15 @@ onMounted(() => {
   } catch (err) {
     console.warn('Realtime subscription error:', err)
   }
+
+  // Tự động làm mới dữ liệu và trạng thái Online mỗi 20 giây
+  refreshTimer = setInterval(() => {
+    loadData()
+  }, 20000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
 })
 </script>
 
