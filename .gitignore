@@ -15,7 +15,7 @@ dist-ssr/
 *.db
 *.db-shm
 *.db-wal
-data/
+/data/
 
 # IDE & OS
 .vscode/
