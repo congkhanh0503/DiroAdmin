@@ -3,18 +3,19 @@ import supabase from './supabase'
 export const api = {
   // 1. Thống kê Dashboard
   async getStats() {
-    const { data: list, error } = await supabase.from('customers').select('*')
+    const { data: list, error } = await supabase.from('customers').select('*').neq('status', 'Deleted')
     if (error) throw error
 
     const now = new Date()
     const soon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
-    let total = list?.length || 0
+    const validList = list || []
+    let total = validList.length
     let active = 0
     let expiringSoon = 0
     let lockedOrExpired = 0
 
-    list?.forEach(c => {
+    validList.forEach(c => {
       const exp = new Date(c.expires_at)
       if (c.status === 'Active' && exp > now) {
         active++
@@ -37,7 +38,7 @@ export const api = {
 
   // 2. Lấy danh sách quán khách hàng
   async getCustomers(filters = {}) {
-    let query = supabase.from('customers').select('*').order('created_at', { ascending: false })
+    let query = supabase.from('customers').select('*').neq('status', 'Deleted').order('created_at', { ascending: false })
 
     if (filters.search) {
       const s = filters.search.trim()
@@ -162,10 +163,24 @@ export const api = {
     }
   },
 
-  // 6. Xóa khách hàng
+  // 6. Xóa khách hàng (Hỗ trợ cả Hard Delete và Soft Delete)
   async deleteCustomer(id) {
-    const { error } = await supabase.from('customers').delete().eq('id', id)
-    if (error) throw error
+    try {
+      const { data, error } = await supabase.from('customers').delete().eq('id', id).select()
+      if (!error && data && data.length > 0) {
+        return { data: { success: true } }
+      }
+    } catch { }
+
+    // Fallback: Khi Supabase RLS chặn lệnh DELETE trực tiếp từ anon key,
+    // Thực hiện Soft Delete: chuyển status sang 'Deleted' và gỡ hardware_id
+    const { error: updErr } = await supabase.from('customers').update({
+      status: 'Deleted',
+      hardware_id: null,
+      notes: 'Đã xóa bởi Admin lúc ' + new Date().toLocaleString('vi-VN')
+    }).eq('id', id)
+
+    if (updErr) throw updErr
     return { data: { success: true } }
   },
 

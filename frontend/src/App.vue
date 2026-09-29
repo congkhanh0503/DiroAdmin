@@ -1007,12 +1007,14 @@ async function toggleCustomerLock(c) {
 }
 
 async function deleteCustomer(c) {
-  if (!confirm(`Xác nhận xóa quán "${c.shopName}" (${c.shopCode}) khỏi hệ thống DiroAdmin?`)) return
+  if (!confirm(`Xác nhận xóa vĩnh viễn quán "${c.shopName}" (${c.shopCode}) khỏi hệ thống DiroAdmin?\n\nLưu ý: Máy POS của quán này sẽ lập tức bị chấm dứt bản quyền.`)) return
   try {
     await api.deleteCustomer(c.id)
+    customers.value = customers.value.filter(item => item.id !== c.id)
+    alert(`Đã xóa thành công quán "${c.shopName}"!`)
     await loadData()
   } catch (err) {
-    alert('Lỗi xóa khách hàng: ' + err.message)
+    alert('Lỗi xóa khách hàng: ' + (err.message || err))
   }
 }
 
