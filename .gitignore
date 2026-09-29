@@ -1,0 +1,25 @@
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Node.js & Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
