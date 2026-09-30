@@ -246,13 +246,24 @@ public class CustomersController : ControllerBase
         customer.ExpiresAt = newExpires;
         customer.Status = "Active"; // Tự động kích hoạt lại nếu đang bị khóa
 
+        decimal price = dto.Price > 0 ? dto.Price : (months switch
+        {
+            1 => 99000m,
+            3 => 280000m,
+            6 => 500000m,
+            12 => 990000m,
+            24 => 1800000m,
+            >= 60 => 2000000m,
+            _ => months * 99000m
+        });
+
         _context.LicenseRecords.Add(new LicenseRecord
         {
             CustomerId = customer.Id,
             LicenseKey = key,
             PlanType = plan,
             Months = months,
-            Price = dto.Price,
+            Price = price,
             IssuedAt = DateTime.UtcNow,
             ExpiresAt = newExpires,
             CreatedBy = "Admin (QuickExtend)"
@@ -262,10 +273,11 @@ public class CustomersController : ControllerBase
 
         return Ok(new
         {
-            Message = $"Đã tự động gia hạn thêm {months} tháng cho quán '{customer.ShopName}'! Hạn mới: {newExpires:dd/MM/yyyy}.",
+            Message = $"Đã tự động gia hạn thêm {months} tháng cho quán '{customer.ShopName}'! Hạn mới: {newExpires:dd/MM/yyyy}. Số tiền: {price:N0} đ",
             ExpiresAt = newExpires,
             Status = customer.Status,
             PlanType = plan,
+            Price = price,
             LicenseKey = key
         });
     }
@@ -281,6 +293,118 @@ public class CustomersController : ControllerBase
 
         string msg = customer.Status == "Suspended" ? "Đã khóa quán thành công." : "Đã mở khóa quán thành công.";
         return Ok(new { Message = msg, Status = customer.Status });
+    }
+
+    [HttpGet("license-records")]
+    public async Task<ActionResult> GetAllLicenseRecords([FromQuery] int? customerId = null, [FromQuery] string? shopCode = null)
+    {
+        var query = _context.LicenseRecords.Include(r => r.Customer).AsQueryable();
+        if (customerId.HasValue)
+        {
+            query = query.Where(r => r.CustomerId == customerId.Value);
+        }
+        if (!string.IsNullOrWhiteSpace(shopCode))
+        {
+            query = query.Where(r => r.Customer != null && r.Customer.ShopCode == shopCode);
+        }
+
+        var list = await query
+            .OrderByDescending(r => r.IssuedAt)
+            .Take(200)
+            .Select(r => new
+            {
+                r.Id,
+                r.CustomerId,
+                ShopCode = r.Customer != null ? r.Customer.ShopCode : "---",
+                ShopName = r.Customer != null ? r.Customer.ShopName : "Quán",
+                r.PlanType,
+                r.Months,
+                r.Price,
+                r.IssuedAt,
+                r.ExpiresAt,
+                r.CreatedBy
+            })
+            .ToListAsync();
+
+        var records = list.Select(r => new
+        {
+            r.Id,
+            r.CustomerId,
+            r.ShopCode,
+            r.ShopName,
+            r.PlanType,
+            r.Months,
+            r.Price,
+            IssuedAt = DateTime.SpecifyKind(r.IssuedAt, DateTimeKind.Utc).ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            ExpiresAt = DateTime.SpecifyKind(r.ExpiresAt, DateTimeKind.Utc).ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            r.CreatedBy
+        });
+
+        return Ok(records);
+    }
+
+    [HttpPost("license-records")]
+    public async Task<ActionResult> CreateLicenseRecord([FromBody] CreateLicenseRecordDto dto)
+    {
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.ShopCode == dto.ShopCode);
+        if (customer == null && dto.CustomerId.HasValue)
+        {
+            customer = await _context.Customers.FindAsync(dto.CustomerId.Value);
+        }
+
+        if (customer == null)
+        {
+            customer = new Customer
+            {
+                ShopCode = dto.ShopCode ?? $"DP-{DateTime.UtcNow.Ticks % 10000}",
+                ShopName = dto.ShopName ?? "Quán",
+                CurrentPlan = dto.PlanType ?? "Monthly",
+                ExpiresAt = dto.ExpiresAt ?? DateTime.UtcNow.AddMonths(dto.Months > 0 ? dto.Months : 1),
+                Status = "Active"
+            };
+            _context.Customers.Add(customer);
+            await _context.SaveChangesAsync();
+        }
+        else
+        {
+            if (dto.ExpiresAt.HasValue)
+            {
+                customer.ExpiresAt = dto.ExpiresAt.Value;
+            }
+            if (!string.IsNullOrEmpty(dto.PlanType))
+            {
+                customer.CurrentPlan = dto.PlanType;
+            }
+            customer.Status = "Active";
+        }
+
+        var record = new LicenseRecord
+        {
+            CustomerId = customer.Id,
+            PlanType = dto.PlanType ?? "Monthly",
+            Months = dto.Months > 0 ? dto.Months : 1,
+            Price = dto.Price,
+            IssuedAt = dto.IssuedAt ?? DateTime.UtcNow,
+            ExpiresAt = dto.ExpiresAt ?? customer.ExpiresAt,
+            CreatedBy = dto.CreatedBy ?? "Admin"
+        };
+
+        _context.LicenseRecords.Add(record);
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            record.Id,
+            CustomerId = customer.Id,
+            customer.ShopCode,
+            customer.ShopName,
+            record.PlanType,
+            record.Months,
+            record.Price,
+            record.IssuedAt,
+            record.ExpiresAt,
+            record.CreatedBy
+        });
     }
 
     [HttpGet("dashboard-stats")]
@@ -343,5 +467,18 @@ public class QuickExtendDto
 {
     public int Months { get; set; } = 1;
     public decimal Price { get; set; } = 0;
+}
+
+public class CreateLicenseRecordDto
+{
+    public int? CustomerId { get; set; }
+    public string? ShopCode { get; set; }
+    public string? ShopName { get; set; }
+    public string? PlanType { get; set; }
+    public int Months { get; set; } = 1;
+    public decimal Price { get; set; } = 0;
+    public DateTime? IssuedAt { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public string? CreatedBy { get; set; }
 }
 
