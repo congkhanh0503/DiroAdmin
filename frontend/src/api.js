@@ -111,7 +111,7 @@ export const api = {
         activeCount: active,
         expiringSoonCount: expiringSoon,
         lockedOrExpiredCount: lockedOrExpired,
-        totalRevenue: totalRevenue > 0 ? totalRevenue : (active * 99000) // Fallback tối thiểu
+        totalRevenue: totalRevenue // Chuẩn xác 100% từ lịch sử, không dùng fallback giả định
       }
     }
   },
@@ -426,22 +426,87 @@ export const api = {
     }
   },
 
-  // 7. Xóa khách hàng
+  // 7. Xóa vĩnh viễn khách hàng (Hard Delete qua SupabaseAdmin)
   async deleteCustomer(id) {
+    // 1. Dùng supabaseAdmin (quyền tối cao) xóa thẳng khỏi Database
     try {
-      const { data, error } = await supabase.from('customers').delete().eq('id', id).select()
-      if (!error && data && data.length > 0) {
+      const { error } = await supabaseAdmin.from('customers').delete().eq('id', id)
+      if (!error) {
         return { data: { success: true } }
       }
     } catch {}
 
-    const { error: updErr } = await supabase.from('customers').update({
+    // 2. Thử qua client thông thường
+    const { error: delErr } = await supabase.from('customers').delete().eq('id', id)
+    if (!delErr) {
+      return { data: { success: true } }
+    }
+
+    // 3. Fallback đánh dấu đã xóa nếu có ràng buộc ngoại
+    const { error: updErr } = await supabaseAdmin.from('customers').update({
       status: 'Deleted',
       hardware_id: null,
       notes: 'Đã xóa bởi Admin lúc ' + new Date().toLocaleString('vi-VN')
     }).eq('id', id)
 
     if (updErr) throw updErr
+    return { data: { success: true } }
+  },
+
+  // 7b. Xóa 1 bản ghi lịch sử gia hạn
+  async deleteLicenseRecord(record) {
+    if (!record) return { data: { success: false } }
+
+    // 1. Xóa trong LocalStorage
+    try {
+      const list = getLocalLicenseRecords()
+      const recTime = parseUtc(record.issuedAt)
+      const filtered = list.filter(r => {
+        if (record.id && r.id && String(r.id) === String(record.id)) return false
+        const rTime = parseUtc(r.issuedAt)
+        const sameShop = (r.shopCode && record.shopCode && r.shopCode === record.shopCode) ||
+                         (r.customerId && record.customerId && r.customerId === record.customerId)
+        return !(sameShop && Math.abs(rTime - recTime) < 60000)
+      })
+      localStorage.setItem('diroadmin_license_records', JSON.stringify(filtered))
+    } catch (e) {
+      console.warn('Lỗi xóa local record:', e)
+    }
+
+    // 2. Xóa trong Supabase (nếu có id)
+    try {
+      if (record.id) {
+        await supabaseAdmin.from('license_records').delete().eq('id', record.id)
+      }
+    } catch {}
+
+    // 3. Xóa trong Backend SQLite (nếu có id)
+    try {
+      if (record.id) {
+        await fetch(`http://localhost:5020/api/customers/license-records/${record.id}`, { method: 'DELETE' })
+      }
+    } catch {}
+
+    return { data: { success: true } }
+  },
+
+  // 7c. Xóa toàn bộ lịch sử gia hạn (Clear sạch doanh thu)
+  async clearAllLicenseRecords() {
+    // 1. Xóa sạch LocalStorage
+    try {
+      localStorage.removeItem('diroadmin_license_records')
+    } catch {}
+
+    // 2. Xóa sạch bảng Supabase
+    try {
+      await supabaseAdmin.from('license_records').delete().neq('id', 0)
+    } catch {}
+
+    // 3. Xóa trên Backend nếu có endpoint
+    try {
+      await fetch('http://localhost:5020/api/customers/license-records/clear', { method: 'POST' })
+    } catch {}
+
     return { data: { success: true } }
   },
 

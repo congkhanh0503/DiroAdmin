@@ -56,12 +56,13 @@
               <th class="py-3 px-3.5">Số Tiền Thu</th>
               <th class="py-3 px-3.5">Hạn Mới</th>
               <th class="py-3 px-3.5 text-right">Người Cấp</th>
+              <th class="py-3 px-3 text-center">Xóa</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-800/60 font-medium">
             <tr 
               v-for="r in records" 
-              :key="r.id"
+              :key="r.id || r.issuedAt"
               class="hover:bg-slate-800/30 transition text-[11px]"
             >
               <td class="py-3 px-3.5 whitespace-nowrap text-slate-400 font-mono">
@@ -91,6 +92,15 @@
               <td class="py-3 px-3.5 text-right whitespace-nowrap text-slate-400 text-[10px]">
                 {{ r.createdBy || 'Admin' }}
               </td>
+              <td class="py-3 px-3 text-center whitespace-nowrap">
+                <button
+                  @click="confirmDeleteRecord(r)"
+                  class="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                  title="Xóa phiếu gia hạn này"
+                >
+                  <Trash2 class="w-3.5 h-3.5" />
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -98,9 +108,20 @@
 
       <!-- Modal Footer -->
       <div class="flex items-center justify-between pt-2 border-t border-slate-800 shrink-0">
-        <p class="text-[11px] text-slate-500">
-          💡 Tất cả số tiền gia hạn đều được tự động hạch toán vào doanh thu Dashboard.
-        </p>
+        <div class="flex items-center gap-2">
+          <button
+            v-if="records.length > 0"
+            @click="confirmClearAll"
+            class="px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-[11px] transition flex items-center gap-1.5 cursor-pointer"
+            title="Xóa toàn bộ lịch sử để đưa doanh thu về 0đ"
+          >
+            <Trash2 class="w-3.5 h-3.5" />
+            <span>Xóa Sạch Lịch Sử Test</span>
+          </button>
+          <span class="text-[10px] text-slate-500 hidden sm:inline">
+            (Xóa phiếu gia hạn sẽ tự động trừ doanh thu Dashboard)
+          </span>
+        </div>
         <button
           @click="$emit('close')"
           class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs cursor-pointer"
@@ -114,7 +135,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { History } from 'lucide-vue-next'
+import { History, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -128,7 +149,21 @@ const props = defineProps({
   }
 })
 
-defineEmits(['close'])
+const emit = defineEmits(['close', 'delete-record', 'clear-all-records'])
+
+function confirmDeleteRecord(record) {
+  const shopName = record.shopName || 'quán'
+  const priceStr = formatCurrency(record.price)
+  if (confirm(`Bạn có chắc chắn muốn xóa bản ghi gia hạn của "${shopName}" (${priceStr})?\n\nThao tác này sẽ tự động trừ số tiền này khỏi tổng doanh thu Dashboard.`)) {
+    emit('delete-record', record)
+  }
+}
+
+function confirmClearAll() {
+  if (confirm('⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ LỊCH SỬ GIA HẠN?\n\nToàn bộ dữ liệu doanh thu test sẽ được đặt lại về 0 ₫. Thao tác này không thể hoàn tác!')) {
+    emit('clear-all-records')
+  }
+}
 
 const totalRevenue = computed(() => {
   return props.records.reduce((sum, r) => sum + (Number(r.price) || 0), 0)

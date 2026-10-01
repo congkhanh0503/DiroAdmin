@@ -588,6 +588,8 @@
       :customer="historyCustomer"
       :records="historyRecords"
       @close="showHistoryModal = false"
+      @delete-record="handleDeleteLicenseRecord"
+      @clear-all-records="handleClearAllLicenseRecords"
     />
 
     <!-- MODAL 5: Bản Sao Lưu Cloud (Supabase) -->
@@ -728,15 +730,40 @@ async function loadData() {
     ])
     if (custRes?.data) customers.value = custRes.data
     if (recs) licenseRecords.value = recs
-    if (statsRes?.data?.totalRevenue !== undefined && statsRes.data.totalRevenue > 0) {
+    if (statsRes?.data?.totalRevenue !== undefined) {
       totalRevenue.value = statsRes.data.totalRevenue
-    } else if (recs && recs.length > 0) {
+    } else if (recs) {
       totalRevenue.value = recs.reduce((sum, r) => sum + (Number(r.price) || 0), 0)
     }
   } catch (err) {
     console.error('Lỗi tải dữ liệu:', err)
   } finally {
     loading.value = false
+  }
+}
+
+async function handleDeleteLicenseRecord(record) {
+  try {
+    await api.deleteLicenseRecord(record)
+    historyRecords.value = historyRecords.value.filter(r => {
+      if (record.id && r.id && r.id === record.id) return false
+      return r !== record
+    })
+    await loadData()
+  } catch (err) {
+    alert('Lỗi xóa bản ghi: ' + (err.message || err))
+  }
+}
+
+async function handleClearAllLicenseRecords() {
+  try {
+    await api.clearAllLicenseRecords()
+    historyRecords.value = []
+    totalRevenue.value = 0
+    await loadData()
+    alert('✅ Đã xóa toàn bộ lịch sử gia hạn thành công! Doanh thu đã được đặt lại về 0 ₫.')
+  } catch (err) {
+    alert('Lỗi xóa lịch sử: ' + (err.message || err))
   }
 }
 
