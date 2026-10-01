@@ -108,20 +108,9 @@
 
       <!-- Modal Footer -->
       <div class="flex items-center justify-between pt-2 border-t border-slate-800 shrink-0">
-        <div class="flex items-center gap-2">
-          <button
-            v-if="records.length > 0"
-            @click="confirmClearAll"
-            class="px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-[11px] transition flex items-center gap-1.5 cursor-pointer"
-            title="Xóa toàn bộ lịch sử để đưa doanh thu về 0đ"
-          >
-            <Trash2 class="w-3.5 h-3.5" />
-            <span>Xóa Sạch Lịch Sử Test</span>
-          </button>
-          <span class="text-[10px] text-slate-500 hidden sm:inline">
-            (Xóa phiếu gia hạn sẽ tự động trừ doanh thu Dashboard)
-          </span>
-        </div>
+        <p class="text-[11px] text-slate-500">
+          💡 Tất cả số tiền gia hạn đều được tự động hạch toán vào doanh thu Dashboard.
+        </p>
         <button
           @click="$emit('close')"
           class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs cursor-pointer"
@@ -149,19 +138,13 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'delete-record', 'clear-all-records'])
+const emit = defineEmits(['close', 'delete-record'])
 
 function confirmDeleteRecord(record) {
   const shopName = record.shopName || 'quán'
   const priceStr = formatCurrency(record.price)
   if (confirm(`Bạn có chắc chắn muốn xóa bản ghi gia hạn của "${shopName}" (${priceStr})?\n\nThao tác này sẽ tự động trừ số tiền này khỏi tổng doanh thu Dashboard.`)) {
     emit('delete-record', record)
-  }
-}
-
-function confirmClearAll() {
-  if (confirm('⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ LỊCH SỬ GIA HẠN?\n\nToàn bộ dữ liệu doanh thu test sẽ được đặt lại về 0 ₫. Thao tác này không thể hoàn tác!')) {
-    emit('clear-all-records')
   }
 }
 

@@ -407,6 +407,27 @@ public class CustomersController : ControllerBase
         });
     }
 
+    [HttpDelete("license-records/{id}")]
+    public async Task<ActionResult> DeleteLicenseRecord(int id)
+    {
+        var record = await _context.LicenseRecords.FindAsync(id);
+        if (record != null)
+        {
+            _context.LicenseRecords.Remove(record);
+            await _context.SaveChangesAsync();
+        }
+        return Ok(new { success = true });
+    }
+
+    [HttpPost("license-records/clear")]
+    [HttpDelete("license-records/clear")]
+    public async Task<ActionResult> ClearAllLicenseRecords()
+    {
+        _context.LicenseRecords.RemoveRange(_context.LicenseRecords);
+        await _context.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+
     [HttpGet("dashboard-stats")]
     public async Task<ActionResult> GetDashboardStats()
     {
